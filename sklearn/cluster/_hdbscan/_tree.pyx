@@ -65,6 +65,7 @@ cpdef tuple tree_to_labels(
     bint allow_single_cluster=False,
     cnp.float64_t cluster_selection_epsilon=0.0,
     max_cluster_size=None,
+    bint return_tree=False,
 ):
     cdef:
         cnp.ndarray[CONDENSED_t, ndim=1, mode='c'] condensed_tree
@@ -81,6 +82,8 @@ cpdef tuple tree_to_labels(
         max_cluster_size,
     )
 
+    if return_tree:
+        return (labels, probabilities, condensed_tree)
     return (labels, probabilities)
 
 cdef list bfs_from_hierarchy(

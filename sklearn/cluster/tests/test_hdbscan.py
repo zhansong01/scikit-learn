@@ -130,6 +130,13 @@ def test_hdbscan_feature_array():
     check_label_quality(labels)
 
 
+def test_hdbscan_condensed_tree_attribute():
+    model = HDBSCAN(copy=False).fit(X)
+    assert model.condensed_tree_.dtype == CONDENSED_dtype
+    assert model.condensed_tree_.ndim == 1
+    assert model.condensed_tree_.size > 0
+
+
 @pytest.mark.parametrize("algo", ALGORITHMS)
 @pytest.mark.parametrize("metric", _VALID_METRICS)
 def test_hdbscan_algorithms(algo, metric):

@@ -48,6 +48,7 @@ from sklearn.cluster._hdbscan._linkage import (
 from sklearn.cluster._hdbscan._reachability import mutual_reachability_graph
 from sklearn.cluster._hdbscan._tree import (
     HIERARCHY_dtype,
+    _condense_tree,
     labelling_at_cut,
     tree_to_labels,
 )
@@ -585,6 +586,11 @@ class HDBSCAN(ClusterMixin, BaseEstimator):
         Note that `n_clusters` only counts non-outlier clusters. That is to
         say, the `-1, -2, -3` labels for the outlier clusters are excluded.
 
+    condensed_tree_ : ndarray of shape (n_nodes,), dtype=CONDENSED_dtype
+        Condensed tree representation built from the single linkage tree.
+        The structured array contains parent/child relationships, lambda
+        values, and cluster sizes.
+
     See Also
     --------
     DBSCAN : Density-Based Spatial Clustering of Applications
@@ -863,14 +869,18 @@ class HDBSCAN(ClusterMixin, BaseEstimator):
 
         self._single_linkage_tree_ = mst_func(**kwargs)
 
-        self.labels_, self.probabilities_ = tree_to_labels(
+        labels, probabilities, condensed_tree = tree_to_labels(
             self._single_linkage_tree_,
             self.min_cluster_size,
             self.cluster_selection_method,
             self.allow_single_cluster,
             self.cluster_selection_epsilon,
             self.max_cluster_size,
+            return_tree=True,
         )
+        self.labels_ = labels
+        self.probabilities_ = probabilities
+        self.condensed_tree_ = condensed_tree
         if self.metric != "precomputed" and not all_finite:
             # Remap indices to align with original data in the case of
             # non-finite entries. Samples with np.inf are mapped to -1 and
@@ -880,6 +890,9 @@ class HDBSCAN(ClusterMixin, BaseEstimator):
                 internal_to_raw,
                 # There may be overlap for points w/ both `np.inf` and `np.nan`
                 non_finite=set(np.hstack([infinite_index, missing_index])),
+            )
+            self.condensed_tree_ = _condense_tree(
+                self._single_linkage_tree_, self.min_cluster_size
             )
             new_labels = np.empty(self._raw_data.shape[0], dtype=np.int32)
             new_labels[finite_index] = self.labels_
